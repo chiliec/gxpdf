@@ -26,8 +26,11 @@ func FuzzOpenFromBytes(f *testing.F) {
 		}()
 		doc, err := OpenFromBytes(data)
 		if err == nil && doc != nil {
-			// Exercise a bit of the parsed document too.
+			// Exercise a bit of the parsed document too. Extracting page text
+			// resolves a content stream, which is what reaches
+			// parseStreamContent (PageCount alone does not).
 			_ = doc.PageCount()
+			_, _ = doc.ExtractTextFromPage(0)
 		}
 	})
 }
