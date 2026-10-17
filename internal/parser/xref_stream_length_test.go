@@ -20,7 +20,8 @@ func TestParseXRefStreamWithFileAccessHugeLengthNoHugeAlloc(t *testing.T) {
 	obj := "90 0 obj\n<< /Type /XRef /Length 9000000000 /W [1 2 1] /Size 1 >>\nstream\ntiny body\nendstream\nendobj\n"
 	data := []byte(obj)
 	p := NewParser(bytes.NewReader(data))
-	_, err := p.ParseXRefStreamWithFileAccess(bytes.NewReader(data), 0)
+	var err error
+	assertSmallAlloc(t, func() { _, err = p.ParseXRefStreamWithFileAccess(bytes.NewReader(data), 0) })
 	if err == nil {
 		t.Fatal("expected a length-mismatch error for the oversized xref stream, got nil")
 	}
@@ -38,7 +39,8 @@ func TestParseStreamDataHugeLengthNoHugeAlloc(t *testing.T) {
 	p := NewParser(strings.NewReader("stream\r\ntiny body\nendstream"))
 	dict := NewDictionary()
 	dict.Set("Length", NewInteger(9000000000))
-	_, err := p.parseStreamData(dict)
+	var err error
+	assertSmallAlloc(t, func() { _, err = p.parseStreamData(dict) })
 	if err == nil {
 		t.Fatal("expected a length-mismatch error for the oversized xref stream, got nil")
 	}

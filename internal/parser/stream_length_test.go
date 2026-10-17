@@ -1,6 +1,7 @@
 package parser
 
 import (
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -14,7 +15,8 @@ func TestParseStreamHugeLengthNoHugeAlloc(t *testing.T) {
 	// A dictionary with a ~9 GB declared Length but a tiny body.
 	input := "1 0 obj\n<< /Length 9000000000 >>\nstream\nhello world\nendstream\nendobj"
 	p := NewParser(strings.NewReader(input))
-	_, err := p.ParseIndirectObject()
+	var err error
+	assertSmallAlloc(t, func() { _, err = p.ParseIndirectObject() })
 	if err == nil {
 		t.Fatal("expected a length-mismatch error for the oversized stream, got nil")
 	}
@@ -38,5 +40,20 @@ func TestParseStreamValidLength(t *testing.T) {
 	}
 	if string(stream.Content()) != body {
 		t.Fatalf("stream content mismatch: got %q", stream.Content())
+	}
+}
+
+// assertSmallAlloc fails the test if fn allocates more than 64 MiB. The
+// regression tests use it so they check the allocation itself, not only the
+// error message.
+func assertSmallAlloc(t *testing.T, fn func()) {
+	t.Helper()
+	var before, after runtime.MemStats
+	runtime.GC()
+	runtime.ReadMemStats(&before)
+	fn()
+	runtime.ReadMemStats(&after)
+	if grew := after.TotalAlloc - before.TotalAlloc; grew > 64<<20 {
+		t.Fatalf("allocated %d bytes for a tiny stream", grew)
 	}
 }
